@@ -1,0 +1,251 @@
+/*create admin registration form when registration information is store in database then generate username using format   [admin first name first letter ,  admin last name first letter, 4 DIGIT Random number, company name ]  in small case and genarate strong password using format [company name capital, @,4 DIGIT Random number,(year), current month first letter in small case] and send to the register email when admin data store in database  
+
+
+To create the admin registration form with the mentioned username and strong password generation, we'll use React for the frontend and Spring Boot for the backend. We'll also use an email service to send the generated credentials to the registered admin. Below is an outline of the code for achieving this:
+
+Backend (Spring Boot):
+
+Create the Admin entity with appropriate fields in the database.
+
+Implement the AdminRepository to perform CRUD operations on the Admin entity.
+
+Create the AdminService to handle the registration logic:
+
+@Service
+public class AdminService {
+    @Autowired
+    private AdminRepository adminRepository;
+
+    public Admin registerAdmin(Admin admin) {
+        // Implement registration logic, including generating username and password
+        String username = generateUsername(admin);
+        String password = generateStrongPassword(admin);
+
+        admin.setUsername(username);
+        admin.setPassword(password);
+        
+        // Save the admin to the database
+        adminRepository.save(admin);
+
+        // Send the generated credentials to the admin's email
+        sendCredentialsToAdmin(admin.getEmail(), username, password);
+
+        return admin;
+    }
+
+    private String generateUsername(Admin admin) {
+        String firstNameFirstLetter = admin.getFirstName().substring(0, 1).toLowerCase();
+        String lastNameFirstLetter = admin.getLastName().substring(0, 1).toLowerCase();
+        String companyName = admin.getCompanyName().toLowerCase();
+        String randomNumber = String.format("%04d", new Random().nextInt(10000));
+        return firstNameFirstLetter + lastNameFirstLetter + randomNumber + companyName;
+    }
+
+    private String generateStrongPassword(Admin admin) {
+        String companyNameCapital = admin.getCompanyName().toUpperCase();
+        String randomNumber = String.format("%04d", new Random().nextInt(10000));
+        String currentYear = String.valueOf(Calendar.getInstance().get(Calendar.YEAR));
+        String currentMonthFirstLetter = new SimpleDateFormat("MMMM").format(new Date()).substring(0, 1).toLowerCase();
+        return companyNameCapital + "@" + randomNumber + "(" + currentYear + ")" + currentMonthFirstLetter;
+    }
+
+    private void sendCredentialsToAdmin(String email, String username, String password) {
+        // Implement email sending logic to send the generated credentials to the admin's email
+    }
+}
+
+
+
+@RestController
+@RequestMapping("/api/admin")
+public class AdminController {
+    @Autowired
+    private AdminService adminService;
+
+    @PostMapping("/register")
+    public ResponseEntity<Admin> registerAdmin(@RequestBody Admin admin) {
+        Admin registeredAdmin = adminService.registerAdmin(admin);
+        return new ResponseEntity<>(registeredAdmin, HttpStatus.CREATED);
+    }
+}
+*/
+
+
+
+Using Classroom at a school/university with students?
+If so, your school must sign up for a Google Workspace for Education account before you can use Classroom. Learn more
+
+Google Workspace for Education lets schools/universities decide which Google services their students can use, and provides additional privacy and security protection that is important in a school or university setting. Students cannot use Google Classroom in a school or university with their personal accounts.
+
+
+cheackbox  - I've read and understand the above notice, and I'm not using Classroom at a school/university with students
+
+
+
+//valid domain or not
+
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.net.InetAddress;
+
+@RestController
+public class DomainValidationController {
+
+    @GetMapping("/validate-domain")
+    public boolean validateDomain(@RequestParam String domainName) {
+        try {
+            InetAddress.getByName(domainName);
+            return true; // Domain is valid
+        } catch (Exception e) {
+            return false; // Domain is not valid
+        }
+    }
+}
+
+
+import React, { useState } from 'react';
+import axios from 'axios';
+
+function DomainValidationChecker() {
+    const [domainName, setDomainName] = useState('');
+    const [isValid, setIsValid] = useState(null);
+
+    const validateDomain = async () => {
+        try {
+            const response = await axios.get(`/validate-domain?domainName=${domainName}`);
+            setIsValid(response.data);
+        } catch (error) {
+            console.error(error);
+        }
+    };
+
+    return (
+        <div>
+            <input
+                type="text"
+                value={domainName}
+                onChange={(e) => setDomainName(e.target.value)}
+            />
+            <button onClick={validateDomain}>Validate Domain</button>
+            {isValid === true && <p>Domain is valid!</p>}
+            {isValid === false && <p>Domain is not valid.</p>}
+        </div>
+    );
+}
+
+export default DomainValidationChecker;
+
+
+
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+
+function RootAdminSetup() {
+    const [isSetupComplete, setIsSetupComplete] = useState(false);
+    const [username, setUsername] = useState('');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+
+    useEffect(() => {
+        // Check if the setup is already complete
+        axios.get('/api/admin/setup')
+            .then(response => {
+                setIsSetupComplete(response.data.setupComplete);
+            })
+            .catch(error => {
+                console.error('Error checking setup status:', error);
+            });
+    }, []);
+
+    const handleSetup = async () => {
+        try {
+            await axios.post('/api/admin/setup', {
+                username,
+                email,
+                password,
+                role: 'root_admin'
+            });
+            console.log('Root admin created successfully.');
+            setIsSetupComplete(true);
+        } catch (error) {
+            console.error('Error creating root admin:', error);
+        }
+    };
+
+    return (
+        <div>
+            {!isSetupComplete ? (
+                <div>
+                    <h2>Setup Root Admin</h2>
+                    <input
+                        type="text"
+                        placeholder="Username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                    />
+                    <input
+                        type="email"
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                    />
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                    />
+                    <button onClick={handleSetup}>Setup Root Admin</button>
+                </div>
+            ) : (
+                <p>Root admin setup is already complete.</p>
+            )}
+        </div>
+    );
+}
+
+export default RootAdminSetup;
+
+
+@Entity
+public class User {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String username;
+    private String email;
+    private String password;
+    private String role; // employee, admin, root_admin
+
+    // Getters and setters
+}
+
+public interface UserRepository extends JpaRepository<User, Long> {
+    // Add custom queries here
+}
+
+@RestController
+@RequestMapping("/api/admin")
+public class AdminController {
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @PostMapping("/setup")
+    public ResponseEntity<String> setupRootAdmin(@RequestBody User rootAdmin) {
+        if (userRepository.count() > 0) {
+            return ResponseEntity.badRequest().body("Root admin already created.");
+        }
+
+        // Hash the password before saving (use proper password hashing)
+        rootAdmin.setPassword(passwordEncoder.encode(rootAdmin.getPassword()));
+        rootAdmin.setRole("root_admin");
+
+        userRepository.save(rootAdmin);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body("Root admin created successfully.");
+    }
+}

@@ -1,0 +1,23 @@
+Configuring CORS (Cross-Origin Resource Sharing) if React frontend and Spring Boot backend are hosted on different domains.
+In your Spring Boot application, you may need to configure CORS to allow cross-origin requests from your React frontend. You can do this by adding a CorsFilter bean or using @CrossOrigin annotations on your controller.
+
+
+@Configuration
+public class CorsConfig {
+    @Bean
+    public FilterRegistrationBean<CorsFilter> corsFilter() {
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowCredentials(true);
+        config.addAllowedOrigin("http://localhost:3000"); // Replace with your React app's URL
+        config.addAllowedHeader("*");
+        config.addAllowedMethod("*");
+        source.registerCorsConfiguration("/**", config);
+
+        FilterRegistrationBean<CorsFilter> bean = new FilterRegistrationBean<>(new CorsFilter(source));
+        bean.setOrder(Ordered.HIGHEST_PRECEDENCE);
+        return bean;
+    }
+}
+
+With these steps, you should be able to set and access session attributes from your React frontend through your Spring Boot backend. The session data will be stored on the server-side, and your React app can communicate with the backend using HTTP requests to read and write session data.

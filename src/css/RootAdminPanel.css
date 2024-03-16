@@ -1,0 +1,149 @@
+.admin-panel{
+    /* border: 2px solid red; */
+    /* min-height: 100%; */
+}
+
+.admin-panel .main-container{
+    /* border: 2px solid blue; */
+    display: flex;
+}
+
+/* header part */
+
+header{
+    /* border: 2px solid ; */
+    padding: 15px;
+    background-color: rgba(0, 0, 0, 0.856);
+    width: 100%;
+    display: flex ;
+    justify-content: space-between;
+    /* position: fixed;
+    top: 0; */
+}
+header span{
+    font-weight: bold;
+    font-size: 20px;
+}
+
+header #sp1{
+    color: green;
+}
+
+header #sp2{
+    color: white;
+}
+
+
+
+.main-container{
+    /* border: 2px solid red; */
+    display: flex;
+}
+
+
+/* side navbar */
+
+.side-navbar-container{
+    /* border: 2px solid red; */
+    width: 250px;
+    /* position: fixed; */
+}
+
+.side-navbar-container #chat-name{
+    padding: 15px;
+    background-color: #3f51b5;
+    color: white;
+    font-weight: bold;
+    letter-spacing: 1.3px;
+    font-size: 19px;
+}
+
+.side-navbar-container .nav-link-list{
+    /* border: 2px solid; */
+    background-color: #afbec7;;
+    height: 100vh; 
+}
+
+.side-navbar-container .nav-link-list ul{
+    padding: 15px;
+    /* border: 1px solid; */
+    list-style-type: none;
+}
+
+.side-navbar-container .nav-link-list ul li{
+    /* border: 1px solid red; */
+    margin: 10px;
+    /* background-color: aquamarine; */
+    border-radius: 10px;
+    padding: 10px;
+
+}
+
+.side-navbar-container .nav-link-list ul li svg{
+    font-size: 25px;
+    /* color: #3f51b5; */
+    border-radius: 10px;
+    margin-right: 15px;
+    
+}
+
+.side-navbar-container .nav-link-list ul li a{
+    text-decoration-line: none;
+    display: flex;
+    align-items: center;
+    color: black;
+    font-weight: 400;
+}
+
+.active svg{
+    color: #3f51b5;
+}
+
+.active span{
+    color: #3f51b5;
+    font-weight: bold;
+}
+
+/* components */
+.show-component{
+    /* border: 2px solid blue; */
+    padding: 10px;
+    background-color: rgba(169, 169, 169, 0.267);
+    width: 100vw;
+    height: 100vh;
+    /* overflow-y: hidden; */
+}
+
+/* 1.dashboard */
+
+.cards{
+    /* border: 2px solid red; */
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    padding: 10px;
+}
+
+.card{
+    margin: 15px 15px;
+}
+
+.card-body svg{
+    font-size: 35px;
+}
+
+
+/* 2. groups */
+
+.selected-users-cont{
+    display: flex;
+    /* border: 1px solid; */
+}
+
+.selected-users{
+    background: #3f51b5;
+    color: white;
+    margin: 5px;
+    padding: 5px;
+    display: inline-block;
+}
