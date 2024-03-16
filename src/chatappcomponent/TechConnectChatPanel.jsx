@@ -5,8 +5,14 @@ import { Stomp } from '@stomp/stompjs';
 
 import "../css/TechConnectChatPanel.css"
 import profile from "../assets/uichat.png"
+import groupprofile from "../assets/groupprofile.jpeg"
+import employeeprofile from "../assets/employee.png"
 
 import { FaDotCircle } from "react-icons/fa"
+
+import { getGroups } from '../service/GroupService';
+import { getUsers } from '../service/UserService';
+import { getChatPanelData } from '../service/ChatPanelService';
 
 
 function TechConnectChatPanel() {
@@ -14,21 +20,45 @@ function TechConnectChatPanel() {
     // const [messages, setMessages] = useState();
     const [receivedMessage, setReceivedMessage] = useState([]);
     const [stompClient, setStompClient] = useState(null);
+    const [chatpanelGroupData, setChatpanelGroupData] = useState({users: []})
+    const [loginEmployee, setLoginEmployee] = useState({})
+    const [onlineUser, setOnlineUser] = useState(false)
+    const [loginUser, setLoginUser] = useState()
 
     const navigate = useNavigate()
 
-    useEffect(()=>{       
-        
+    useEffect(()=>{  
+
+        const urlParams = new URLSearchParams(window.location.search)
+        const groupId = urlParams.get('groupId')
+        const empId = urlParams.get('employeeId')
+
+        console.log("groupId", groupId)
+        console.log("empId", empId)
+
+        getChatPanelData(groupId, empId).then((res)=>{
+            console.log(res)
+            if(res.status == 200){
+                setChatpanelGroupData(res.data.groupData, )
+                setLoginEmployee(res.data.loginEmployee)
+            }
+        }).catch((error)=>{
+            console.log(error)
+        })
+
+        setLoginUser(JSON.parse(localStorage.getItem("loginuser")))
+            
         const socket=new SockJS("http://localhost:8080/server1")
         const client=Stomp.over(socket)
         setStompClient(client)
 
         client.connect({},()=>{
             console.log("connected")
+            setOnlineUser(navigator.onLine)
             client.subscribe("/topic/return-to",(response)=>{
                 try {
                     const receivedMsg = JSON.parse(response.body);
-                    // console.log("Received message:", receivedMsg);
+                    console.log("Received message:", receivedMsg);
                     setReceivedMessage((prevMessages) => [...prevMessages, receivedMsg]);
                 } catch (error) {
                     console.error("Error parsing JSON:", error);                    
@@ -45,6 +75,10 @@ function TechConnectChatPanel() {
 
     },[])
 
+    function isUserLoggedIn(user){
+        
+    }
+
     const handleTextChange = (e) => {
         setText(e.target.value);
         e.target.style.height = 'auto';
@@ -54,9 +88,9 @@ function TechConnectChatPanel() {
     const handleSendMessage = (e) => {
         if (text.trim() !== '') {
             const newMessage = {
-                // sender: 'You',
+                sender: loginEmployee.ename,
                 message: text,
-                // timestamp: new Date().toLocaleString(),
+                timestamp: new Date().toLocaleString(),
             };
             // document.getElementsByClassName("message").classList.add('sent')
             stompClient.send("/app/message",{}, JSON.stringify(newMessage));
@@ -69,7 +103,10 @@ function TechConnectChatPanel() {
         alert("Logout successfully!")
         navigate('/login')
         localStorage.removeItem('loginuser');
+        stompClient.disconnect();
     }
+
+
     console.log(text)
     console.log(receivedMessage)
     document.title = "Techorp - Roshan Pawar"
@@ -77,28 +114,29 @@ function TechConnectChatPanel() {
         <div>
             <div className="header-container">
                 <h1>TechConnect</h1>
-                <button class="btn btn-secondary" onClick={userLogout}>Logout</button>
+                <button className="btn btn-secondary" onClick={userLogout}>Logout</button>
             </div>
             <div className='panel-container' >
                 <div className="grp-members">
                     <h3>TechCorp</h3>
-                    <h6 style={{ color: "green" }}>IT DEPARTMENT</h6>
+                    <h6 style={{ color: "green" }}>{chatpanelGroupData.gdname}</h6>
                     <hr />
                     <h5>Group Members</h5>
                     <ul>
-                        <li>Roshan Pawar <span style={{ color: "red" }}>{"(Admin)"}</span> <span><FaDotCircle /></span></li>
-                        <li>Harsh Avadhan <span><FaDotCircle /></span></li>
-                        <li>Raj Majhi</li>
-                        <li>Omkar Shinde <span><FaDotCircle /></span></li>
-                        <li>Hassan Khan</li>
+                        {
+                            chatpanelGroupData.users.map((user,i)=>{return <li key={i}> {user.ename} { isUserLoggedIn(user)
+                                                                                ? <span style={{ color: 'green' }}> (Online)</span> 
+                                                                                : <span style={{ color: 'red' }}> (Offline)</span>}
+                                                                            </li>})
+                        }
                     </ul>
                 </div>
                 <div className="chats">
                     <div className='h-gp-tn'>
-                        <img src={profile} alt="profile" />
+                        <img src={groupprofile} alt="Group profile" />
                         <div className="hd">
-                            <h3>Angular Developers</h3>
-                            <h6>Angular Team</h6>
+                            <h3>{chatpanelGroupData.gname}</h3>
+                            <h6>{chatpanelGroupData.gtname}</h6>
                         </div>
                     </div>
                     <hr />
@@ -106,7 +144,7 @@ function TechConnectChatPanel() {
                         {
                             receivedMessage.map((rmsg,index)=>{
                                 return (
-                                    <div key={index} className={`message ${rmsg.sender === 'You' ? 'sent' : 'received'}`}>
+                                    <div key={index} className={`message ${rmsg.sender === loginEmployee.ename ? 'sent' : 'received'}`}>
                                         <div className="sender">{rmsg.sender}</div>
                                         <pre className="message-text">{rmsg.message}</pre>
                                         <div className="timestamp"><small>{rmsg.timestamp}</small></div>
@@ -122,32 +160,35 @@ function TechConnectChatPanel() {
                     </div>
                 </div>
                 <div className="emp-profile">
-                    <img src={profile} alt="profile" />
-                    <b>Omkar Shinde</b>
-                    <p style={{ color: 'green' }}>Active <FaDotCircle /></p>
+                    <img src={employeeprofile} alt="Employee profile" />
+                    <b>{loginEmployee.ename}</b>
+                    <p >{onlineUser ? <span style={{ color: 'green' }}> Active <FaDotCircle /></span> 
+                                    : <span style={{ color: 'red' }}> Offline </span>}
+                                    
+                    </p>
                     <table className="table text-center table-striped ">
                         <thead>
                             <tr>
                                 <th scope="col">Emp ID</th>
-                                <td scope="col">tce5846</td>
+                                <td scope="col">{loginEmployee.eid}</td>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <th scope="row">Email</th>
-                                <td>omkar@gmail.com</td>
+                                <td>{loginEmployee.eemail}</td>
                             </tr>
-                            <tr>
+                            {/* <tr>
                                 <th scope="row">Role</th>
                                 <td>Junior Developer</td>
-                            </tr>
+                            </tr> */}
                             <tr>
                                 <th scope="row">Date of Joined</th>
-                                <td>20 Dec 2023</td>
+                                <td>{String(loginEmployee.date_joined).slice(0,10)}</td>
                             </tr>
                             <tr>
                                 <th scope="row">Group ID</th>
-                                <td>tcg4283</td>
+                                <td>{chatpanelGroupData.gid}</td>
                             </tr>
                         </tbody>
                     </table>
