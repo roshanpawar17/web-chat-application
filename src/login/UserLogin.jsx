@@ -8,6 +8,8 @@ import { userLogin } from '../service/LoginService';
 import { rootlogin } from '../service/RootAdminService';
 import { getroot } from '../service/RootAdminService';
 
+// import stompClient from '../service/WebSocket';
+
 function UserLogin() {
     const navigate = useNavigate()
     // const { groupId } = useParams();
@@ -20,11 +22,12 @@ function UserLogin() {
             // console.log(res)
         })
         let loginUser = JSON.parse(localStorage.getItem("loginuser"))
+        let redirecturl = JSON.parse(localStorage.getItem("redirecturl"))
         if(loginUser){
-            if(loginUser.erole == "normal_user"){
-                navigate('/chatpanel')
-            }else if(loginUser.role == "root_admin"){
+            if(loginUser.role == "root_admin"){
                 navigate('/rootadminpanel/dashboard')
+            }else{
+                navigate(redirecturl)
             }
         }else{
             navigate('/login')
@@ -58,28 +61,38 @@ function UserLogin() {
     })
 
     const onSubmit = (values) => {
-        userLogin(values).then((response)=>{
-            console.log(response)
-            if(response.status === 200){
-                alert("Login Successfully!")
-                if(response.data.role == "root_admin"){
-                    localStorage.setItem("loginuser", JSON.stringify(response.data))
-                    navigate('/rootadminpanel/dashboard')
+        if(navigator.onLine){
+
+            userLogin(values).then((response)=>{
+                console.log(response)
+                if(response.status === 200){
+                    alert("Login Successfully!")
+                    if(response.data.role == "root_admin"){
+                        localStorage.setItem("loginuser", JSON.stringify(response.data))
+                        navigate('/rootadminpanel/dashboard')
+                    }else{
+                        console.log("loginemployee ", response.data.employee)
+                        localStorage.setItem("loginuser", JSON.stringify(response.data.employee))
+                        localStorage.setItem("redirecturl", JSON.stringify(response.data.redirectUrl))
+                        // navigate(`/chatpanel?groupId=${groupId}`)
+                        // stompClient.send('/app/login', {}, JSON.stringify({ userId: response.eid }));
+                        navigate(response.data.redirectUrl)
+                    }
                 }else{
-                    localStorage.setItem("loginuser", JSON.stringify(response.data.employee))
-                    // navigate(`/chatpanel?groupId=${groupId}`)
-                    navigate(response.data.redirectUrl)
+                    console.log(new Error("Something went wrong!"))
+                    alert(new Error("Something went wrong!"))
                 }
-            }else{
-                console.log(new Error("Something went wrong!"))
-                alert(new Error("Something went wrong!"))
-            }
-            
-        }).catch((error)=>{
-            if(error.response.status == 401){
-                alert(`${error.response.data}, please enter valid email and password` )
-            }
-        })
+                
+            }).catch((error)=>{
+                if(error.response.status == 401){
+                    alert(`${error.response.data}, please enter valid email and password` )
+                }else if(error.response.status == 500){
+                    alert( `Server error, please try again later.`);
+                }
+            })
+        }else{
+            alert("No Internet Connection")
+        }
         // if (values.role === 'employee') {
         //     await userLogin(values).then((response) => {
         //         console.log(response.data)

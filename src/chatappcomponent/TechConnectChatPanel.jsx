@@ -12,7 +12,9 @@ import { FaDotCircle } from "react-icons/fa"
 
 import { getGroups } from '../service/GroupService';
 import { getUsers } from '../service/UserService';
-import { getChatPanelData } from '../service/ChatPanelService';
+import { getChatPanelData, logOut } from '../service/ChatPanelService';
+
+// import stompClient from '../service/WebSocket';
 
 
 function TechConnectChatPanel() {
@@ -22,61 +24,149 @@ function TechConnectChatPanel() {
     const [stompClient, setStompClient] = useState(null);
     const [chatpanelGroupData, setChatpanelGroupData] = useState({users: []})
     const [loginEmployee, setLoginEmployee] = useState({})
-    const [onlineUser, setOnlineUser] = useState(false)
-    const [loginUser, setLoginUser] = useState()
 
     const navigate = useNavigate()
 
     useEffect(()=>{  
+        let loginuser = JSON.parse(localStorage.getItem('loginuser'))
+        if(!loginuser){
+            navigate('/login')
+        }else{
+            const socket=new SockJS("http://localhost:8080/server1")
+            const client=Stomp.over(socket)
+            if(navigator.onLine){
+    
+                client.connect({},()=>{
+                    setStompClient(client)
+                    console.log("connected", loginEmployee.ename)
+                    // onlineUsers.set(loginEmployee.eid, loginEmployee.ename)
+                    // console.log("online users ", onlineUsers)
+                    client.subscribe("/topic/return-to",(response)=>{
+                        try {
+                            const receivedMsg = JSON.parse(response.body);
+                            console.log("Received message:", receivedMsg);
+                            setReceivedMessage((prevMessages) => [...prevMessages, receivedMsg]);
+                        } catch (error) {
+                            console.error("Error parsing JSON:", error);                    
+                        }
+                    });
+            
+                    client.subscribe("/topic/logout",(response)=>{
+                        try {
+                            console.log("logout user : ", JSON.parse(response.body));
+                            const logoutUser = JSON.parse(response.body);
+                            // Update chat panel data to mark the user as offline
+                            setChatpanelGroupData(prevData => ({
+                                ...prevData,
+                                users: prevData.users.map(user => {
+                                    if (user.eid === logoutUser.userId) {
+                                        return { ...user, onlineStatus: false };
+                                    }
+                                    return user;
+                                })
+                            }));
+        
+                        } catch (error) {
+                            console.error("Error parsing JSON:", error);                    
+                        }
+                    });
+                   
+                  
+                })
+        
+        
+                return () => {
+                    client.disconnect();
+                };
+            }
+            else{
+                alert("No Internet Connection")
+            }
 
+        }
+                  
+
+    },[])
+
+    useEffect(()=>{
+        fetchChatPanelData()
+    }, [stompClient])
+
+    
+    function fetchChatPanelData(){
         const urlParams = new URLSearchParams(window.location.search)
         const groupId = urlParams.get('groupId')
         const empId = urlParams.get('employeeId')
 
-        console.log("groupId", groupId)
-        console.log("empId", empId)
-
-        getChatPanelData(groupId, empId).then((res)=>{
-            console.log(res)
-            if(res.status == 200){
-                setChatpanelGroupData(res.data.groupData, )
-                setLoginEmployee(res.data.loginEmployee)
-            }
-        }).catch((error)=>{
-            console.log(error)
-        })
-
-        setLoginUser(JSON.parse(localStorage.getItem("loginuser")))
-            
-        const socket=new SockJS("http://localhost:8080/server1")
-        const client=Stomp.over(socket)
-        setStompClient(client)
-
-        client.connect({},()=>{
-            console.log("connected")
-            setOnlineUser(navigator.onLine)
-            client.subscribe("/topic/return-to",(response)=>{
-                try {
-                    const receivedMsg = JSON.parse(response.body);
-                    console.log("Received message:", receivedMsg);
-                    setReceivedMessage((prevMessages) => [...prevMessages, receivedMsg]);
-                } catch (error) {
-                    console.error("Error parsing JSON:", error);                    
-                }
-            });
+            // getChatPanelData(groupId, empId).then((res)=>{
+            //     console.log(res)
+            //     if(res.status == 200){
+            //         
+            //         // setLoginEmployee(res.data.loginEmployee)
+            //         setLoginEmployee(JSON.parse(localStorage.getItem('loginuser')));
+            //         stompClient.send('/app/login', {}, JSON.stringify({ userId: empId }));
     
-           
-        })
+            //         stompClient.subscribe("/topic/login",(response)=>{
+            //         try {
+            //             console.log("loginUser user : ", JSON.parse(response.body));
+            //             const loginUser = JSON.parse(response.body);
+            //             // Update chat panel data to mark the user as offline
+            //             setChatpanelGroupData(prevData => ({
+            //                 ...prevData,
+            //                 users: prevData.users.map(user => {
+            //                     if (user.eid === loginUser.userId) {
+            //                         return { ...user, onlineStatus: true};
+            //                     }
+            //                     return user;
+            //                 })
+            //             }));
+    
+            //         } catch (error) {
+            //             console.error("Error parsing JSON:", error);                    
+            //         }
+            //     });
+            //     }
+            // }).catch((error)=>{
+            //     console.log(error)
+            // })
 
+            getGroups().then((res)=>{
+                console.log("groups ", res)
+                if(res.status === 200){
+                    let group = res.data.find((group)=>group.gid === groupId)
+                    setChatpanelGroupData(group)
+                    console.log("chatpanelGroupData ",chatpanelGroupData)
+                    setLoginEmployee(JSON.parse(localStorage.getItem('loginuser')));
+                    stompClient.send('/app/login', {}, JSON.stringify({ userId: empId }));
 
-        return () => {
-            client.disconnect();
-        };
-
-    },[])
-
-    function isUserLoggedIn(user){
+                    stompClient.subscribe("/topic/login",(response)=>{
+                        try {
+                            console.log("loginUser user : ", JSON.parse(response.body));
+                            const loginUser = JSON.parse(response.body);
+                            // Update chat panel data to mark the user as offline
+                            setChatpanelGroupData(prevData => ({
+                                ...prevData,
+                                users: prevData.users.map(user => {
+                                    if (user.eid === loginUser.userId) {
+                                        return { ...user, onlineStatus: true};
+                                    }
+                                    return user;
+                                })
+                            }));
         
+                        } catch (error) {
+                            console.error("Error parsing JSON:", error);                    
+                        }
+                    });
+                }else{
+                    alert("Something went wrong")
+                }
+            }).catch((error)=>{
+                console.log(error)
+            })
+
+
+
     }
 
     const handleTextChange = (e) => {
@@ -99,12 +189,47 @@ function TechConnectChatPanel() {
 
     }
 
-    function userLogout(){
-        alert("Logout successfully!")
-        navigate('/login')
-        localStorage.removeItem('loginuser');
-        stompClient.disconnect();
+    function userLogout(loginEmployee){
+        console.log("loginuser ",loginEmployee.eid)
+        if(navigator.onLine){
+            let loginuser = JSON.parse(localStorage.getItem('loginuser'))
+            logOut(loginuser.eid).then((res)=>{
+                console.log(res)
+                notifyLogout(loginuser.eid)
+                // alert("Logout successfully!")
+                navigate('/login')
+                localStorage.removeItem('loginuser');
+                localStorage.removeItem('redirecturl');
+                stompClient.disconnect();
+            })
+
+        }else{
+            alert("No Internet Connection, You are offline")
+        }
     }
+
+    // Notify other users about user logout
+    function notifyLogout(loggedOutUserId) {
+        // Send a WebSocket message to notify other users
+        stompClient.send('/app/logout', {}, JSON.stringify({ userId: loggedOutUserId }));
+    }
+
+// automatically logout after 12 hrs ------------------------------------
+
+    useEffect(()=>{
+        console.log("loginuser ",loginEmployee)  
+        let logoutTimer
+        if(loginEmployee){
+            logoutTimer = setTimeout(()=>{
+                let loginuser = JSON.parse(localStorage.getItem('loginuser'))
+                userLogout(loginuser)
+            }, 12*60*60*1000)
+        }
+
+        return ()=>{
+            clearTimeout(logoutTimer)
+        }
+    },[loginEmployee])
 
 
     console.log(text)
@@ -114,7 +239,7 @@ function TechConnectChatPanel() {
         <div>
             <div className="header-container">
                 <h1>TechConnect</h1>
-                <button className="btn btn-secondary" onClick={userLogout}>Logout</button>
+                <button className="btn btn-secondary" onClick={()=>userLogout(loginEmployee)}>Logout</button>
             </div>
             <div className='panel-container' >
                 <div className="grp-members">
@@ -124,7 +249,7 @@ function TechConnectChatPanel() {
                     <h5>Group Members</h5>
                     <ul>
                         {
-                            chatpanelGroupData.users.map((user,i)=>{return <li key={i}> {user.ename} { isUserLoggedIn(user)
+                            chatpanelGroupData.users.map((user,i)=>{return <li key={i}> {user.ename} { user.onlineStatus && navigator.onLine
                                                                                 ? <span style={{ color: 'green' }}> (Online)</span> 
                                                                                 : <span style={{ color: 'red' }}> (Offline)</span>}
                                                                             </li>})
@@ -162,10 +287,10 @@ function TechConnectChatPanel() {
                 <div className="emp-profile">
                     <img src={employeeprofile} alt="Employee profile" />
                     <b>{loginEmployee.ename}</b>
-                    <p >{onlineUser ? <span style={{ color: 'green' }}> Active <FaDotCircle /></span> 
+                    <p >{loginEmployee.onlineStatus && navigator.onLine ? <span style={{ color: 'green' }}> Active <FaDotCircle /></span> 
                                     : <span style={{ color: 'red' }}> Offline </span>}
                                     
-                    </p>
+                    </p> 
                     <table className="table text-center table-striped ">
                         <thead>
                             <tr>
