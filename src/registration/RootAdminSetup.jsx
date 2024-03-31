@@ -68,11 +68,11 @@ function RootAdminSetup() {
         <section className='root-admin-setup-section'>
             <div className="container-a">
                 <h2>Setup Root Admin</h2>
-                <p>{rootAdmitData.rid}</p>
+                {/* <p>{rootAdmitData.rid}</p>
                 <p>{rootAdmitData.rname}</p>
                 <p>{rootAdmitData.remail}</p>
                 <p>{rootAdmitData.rpassword}</p>
-                <p>{rootAdmitData.role}</p>
+                <p>{rootAdmitData.role}</p> */}
 
                 <form onSubmit={handleSubmit}>
                     <FormGroup>
