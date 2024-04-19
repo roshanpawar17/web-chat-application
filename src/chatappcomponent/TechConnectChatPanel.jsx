@@ -9,12 +9,16 @@ import groupprofile from "../assets/groupprofile.jpeg"
 import employeeprofile from "../assets/employee.png"
 
 import { FaDotCircle } from "react-icons/fa"
+import { CgAttachment } from "react-icons/cg";
 
 import { getGroups } from '../service/GroupService';
 import { getUsers } from '../service/UserService';
 import { getChatPanelData, logOut } from '../service/ChatPanelService';
+import FileUpload from './FileUpload';
 
-// import stompClient from '../service/WebSocket';
+import stompClient from '../service/WebSocket';
+import socket from '../service/WebSocket';
+import socketConnection from '../service/WebSocket';
 
 
 function TechConnectChatPanel() {
@@ -24,6 +28,7 @@ function TechConnectChatPanel() {
     const [stompClient, setStompClient] = useState(null);
     const [chatpanelGroupData, setChatpanelGroupData] = useState({users: []})
     const [loginEmployee, setLoginEmployee] = useState({})
+    const [isUploadFile, setIsUploadFile] = useState(false)
 
     const navigate = useNavigate()
 
@@ -32,8 +37,9 @@ function TechConnectChatPanel() {
         if(!loginuser){
             navigate('/login')
         }else{
-            const socket=new SockJS("http://localhost:8080/server1")
-            const client=Stomp.over(socket)
+            // const socket=new SockJS("http://localhost:8080/server1")
+            // const client=Stomp.over(socket)
+            const client=socketConnection()
             if(navigator.onLine){
     
                 client.connect({},()=>{
@@ -45,6 +51,7 @@ function TechConnectChatPanel() {
                         try {
                             const receivedMsg = JSON.parse(response.body);
                             console.log("Received message:", receivedMsg);
+                            console.log("Received message attachment:", receivedMsg.attachment?.name);
                             setReceivedMessage((prevMessages) => [...prevMessages, receivedMsg]);
                         } catch (error) {
                             console.error("Error parsing JSON:", error);                    
@@ -181,12 +188,22 @@ function TechConnectChatPanel() {
                 sender: loginEmployee.ename,
                 message: text,
                 timestamp: new Date().toLocaleString(),
+                type: 'TEXT'
             };
             // document.getElementsByClassName("message").classList.add('sent')
             stompClient.send("/app/message",{}, JSON.stringify(newMessage));
             setText('');
         }
 
+    }
+
+    function uploadAttachment(){
+        console.log("upload click")
+        setIsUploadFile(true)
+    }
+
+    function cancelAttachment(){
+        setIsUploadFile(false)
     }
 
     function userLogout(loginEmployee){
@@ -279,10 +296,23 @@ function TechConnectChatPanel() {
                         }
                         
                     </div>
-                    <div className="input-container">
-                        <textarea type="text" id="message-input" placeholder="Type your message..." onChange={handleTextChange} value={text} />
-                        <button id="send-button" onClick={handleSendMessage}>Send</button>
-                    </div>
+                    {
+                        !isUploadFile ? 
+                            <div className="input-container">
+                                    <div className='msg-writter'>
+                                        <textarea type="text" id="message-input" placeholder="Type your message..." onChange={handleTextChange} value={text} />
+                                        <button className="send-button" onClick={handleSendMessage}>Send</button>
+                                    </div>
+                                    <div>
+                                        <CgAttachment onClick={uploadAttachment} className='attachment'  title='File Attachment'/>
+                                    </div>
+                            </div>
+                        :
+                            <div className='upload-file-container'>
+                                <FileUpload loginEmployee={loginEmployee} stompClient={stompClient} />
+                                <button className="cancel-button" onClick={cancelAttachment}>Cancel</button>                          
+                            </div>
+                    }
                 </div>
                 <div className="emp-profile">
                     <img src={employeeprofile} alt="Employee profile" />
