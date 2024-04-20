@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
@@ -32,7 +32,23 @@ function TechConnectChatPanel() {
 
     const navigate = useNavigate()
 
+    const messagesContainerRef = useRef(null);
+
+    // Function to scroll to the bottom of the messages container
+    const scrollToBottom = () => {
+        // if (messagesContainerRef.current) {
+        //     const { scrollHeight, clientHeight } = messagesContainerRef.current;
+        //     messagesContainerRef.current.scrollTop = scrollHeight - clientHeight;
+        // }
+        var messageBody = document.querySelector('.messages-container');
+        messageBody.scrollTop = messageBody.scrollHeight - messageBody.clientHeight;
+        // console.log("scrollTop:", messageBody.scrollTop);
+        // console.log("scrollHeight:", messageBody.scrollHeight);
+        // console.log("clientHeight:", messageBody.clientHeight);
+    };
+
     useEffect(()=>{  
+        scrollToBottom()
         let loginuser = JSON.parse(localStorage.getItem('loginuser'))
         if(!loginuser){
             navigate('/login')
@@ -53,6 +69,7 @@ function TechConnectChatPanel() {
                             console.log("Received message:", receivedMsg);
                             console.log("Received message attachment:", receivedMsg.attachment?.name);
                             setReceivedMessage((prevMessages) => [...prevMessages, receivedMsg]);
+                            scrollToBottom(); // Scroll to the bottom when new message is received
                         } catch (error) {
                             console.error("Error parsing JSON:", error);                    
                         }
@@ -94,6 +111,17 @@ function TechConnectChatPanel() {
                   
 
     },[])
+
+
+    // Fetch all messages when the component mounts or when the user logs in
+    useEffect(() => {
+        fetchAllMessages();
+    }, [chatpanelGroupData]); // Trigger fetchAllMessages when loginEmployee changes
+
+    function fetchAllMessages () {
+        // console.log(chatpanelGroupData.messages)
+        setReceivedMessage(chatpanelGroupData.messages);
+    }
 
     useEffect(()=>{
         fetchChatPanelData()
@@ -183,13 +211,20 @@ function TechConnectChatPanel() {
     };
 
     const handleSendMessage = (e) => {
+        console.log("group id ",chatpanelGroupData.gid)
+        console.log("logine,mployee ",loginEmployee.eid)
         if (text.trim() !== '') {
             const newMessage = {
                 sender: loginEmployee.ename,
                 message: text,
                 timestamp: new Date().toLocaleString(),
-                type: 'TEXT'
+                type: 'TEXT',
+                attachmentDto: null,
+                group: chatpanelGroupData.gid,
+                user: loginEmployee.eid
+
             };
+            console.log("newMessage ", newMessage)
             // document.getElementsByClassName("message").classList.add('sent')
             stompClient.send("/app/message",{}, JSON.stringify(newMessage));
             setText('');
@@ -243,10 +278,43 @@ function TechConnectChatPanel() {
             }, 12*60*60*1000)
         }
 
+        showOnlineOffline();
+
         return ()=>{
             clearTimeout(logoutTimer)
         }
     },[loginEmployee])
+
+    //show user is online or offline
+    function showOnlineOffline(){
+        const urlParams = new URLSearchParams(window.location.search)
+        const empId = urlParams.get('employeeId')
+
+        // Function to set the user's status as online
+        const setUserOnline = () => {
+            document.title = "Techorp - Roshan Pawar (Online)";
+            stompClient.send('/app/login', {}, JSON.stringify({ userId: empId }));
+        };
+
+        // Function to set the user's status as offline
+        const setUserOffline = () => {
+            document.title = "Roshan Pawar - Offline";
+            stompClient.send('/app/logout', {}, JSON.stringify({ userId: empId }));
+        };
+
+        // Event listener for when the window loses focus
+        window.addEventListener('blur', setUserOffline);
+
+        // Event listener for when the window gains focus
+        window.addEventListener('focus', setUserOnline);
+
+        // Set the initial status based on window focus
+        if (document.hasFocus()) {
+            setUserOnline();
+        } else {
+            setUserOffline();
+        }
+    }
 
 
     console.log(text)
@@ -282,12 +350,12 @@ function TechConnectChatPanel() {
                         </div>
                     </div>
                     <hr />
-                    <div className="messages-container">
+                    <div ref={messagesContainerRef} className="messages-container">
                         {
-                            receivedMessage.map((rmsg,index)=>{
+                            receivedMessage?.map((rmsg,index)=>{
                                 return (
                                     <div key={index} className={`message ${rmsg.sender === loginEmployee.ename ? 'sent' : 'received'}`}>
-                                        <div className="sender">{rmsg.sender}</div>
+                                        <div className="sender">{rmsg.sender === loginEmployee.ename ? 'You' : rmsg.sender}</div>
                                         <pre className="message-text">{rmsg.message}</pre>
                                         <div className="timestamp"><small>{rmsg.timestamp}</small></div>
                                     </div> 
@@ -309,7 +377,7 @@ function TechConnectChatPanel() {
                             </div>
                         :
                             <div className='upload-file-container'>
-                                <FileUpload loginEmployee={loginEmployee} stompClient={stompClient} />
+                                <FileUpload loginEmployee={loginEmployee} stompClient={stompClient} chatpanelGroupData={chatpanelGroupData} />
                                 <button className="cancel-button" onClick={cancelAttachment}>Cancel</button>                          
                             </div>
                     }

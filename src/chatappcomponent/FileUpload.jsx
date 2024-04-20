@@ -6,7 +6,7 @@ import stompClient from '../service/WebSocket';
 import socket from '../service/WebSocket';
 import socketConnection from '../service/WebSocket';
 
-function FileUpload({ loginEmployee, stompClient }) {
+function FileUpload({ loginEmployee, stompClient, chatpanelGroupData }) {
     // const [loginEmployee, setLoginEmployee] = useState({})
     const [file, setFile] = useState(null);
     // const [stompClient, setStompClient] = useState(null);
@@ -43,10 +43,12 @@ function FileUpload({ loginEmployee, stompClient }) {
         };
         const newMessage = {
             sender: loginEmployee.ename,
-            message: '',
+            message: null,
             timestamp: new Date().toLocaleString(),
             type: 'FILE',
-            attachment: attachmentData
+            attachmentDto: attachmentData,
+            group: chatpanelGroupData.gid,
+            user: loginEmployee.eid
         };
 
         stompClient.send('/app/upload', {}, JSON.stringify(newMessage))
